@@ -1,0 +1,16 @@
+MMdetection3d radar Code
+
+# Making nuscenes radar dataset code
+python tools/create_data.py nuscenes_radar --root-path /mnt/sda/minjae/nuscenes/ --out-dir data/nuscenes --extra-tag nuscenes --max-sweeps 6
+
+# dist train
+CUDA_VISIBLE_DEVICES=0,1,2,3 PORT=29500 ./tools/dist_train.sh ${CONFIG_FILE} 4 --work-dir ${work_directory} --autoscale-lr
+
+# For debug train
+CUDA_VISIBLE_DEVICES=0 PORT=29500 ./tools/dist_train.sh ${CONFIG_FILE} 1 --work-dir ${work_directory}
+
+# test command
+python tools/test.py ${CONFIG_FILE} ${CHECKPOINT_FILE} [--out ${RESULT_FILE}] [--eval ${EVAL_METRICS}] [--show] [--show-dir ${SHOW_DIR}]
+
+# radar test command
+python tools/test.py work_dirs/radar_votenet_ovft1/radar_votenet_ovft.py work_dirs/radar_votenet_ovft1/epoch_9.pth --eval mAP --use-radar-nusc
