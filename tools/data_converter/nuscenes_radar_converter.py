@@ -353,7 +353,6 @@ def _fill_trainval_infos_official(nusc,nusc_can,
                 info["num_radar_pts"] = np.array([a['num_radar_pts'] for a in annotations])
                 info["filtered_num_radar_pts"] = radar_points
                 info['valid_flag'] = valid_flag
-                import pdb; pdb.set_trace()
                 
             except:
                 new_mask = radar_points>0

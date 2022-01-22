@@ -21,6 +21,7 @@ sudo docker pull tawn0414/spa_radar_mmdet3d:latest
 sudo docker run --gpus all -it -v /home:/home -v /mnt:/mnt --shm-size=512g -p {port}:{port} --name {Container name} tawn0414/spa_radar_mmdet3d:latest /bin/bash
 
 # install SPA_Radar_mmdet3d
+git clone https://github.com/mjseong0414/SPA_Radar_mmdet3d.git
 cd SPA_Radar_mmdet3d/
 pip install -r requirements/build.txt
 pip install --no-cache-dir -e .
