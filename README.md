@@ -14,7 +14,7 @@ I didn't test other version of above packages.
 
 ## Install (You are able to pull docker image.)
 ``` python
-sudo docker pull tawn0414/spa_radar_mmdet3d:latest
+sudo docker pull tawn0414/spa_radar_mmdet3d:cuda10.2-torch1.9.0-mmcv1.4.3
 ```
 ``` python
 # Docker run
