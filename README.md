@@ -4,9 +4,9 @@ README is similar to MMdetection3D github (https://github.com/open-mmlab/mmdetec
 ## Prerequisites
 - CUDA : 10.2
 - Cudnn : 7
-- pytorch : 1.8.1
-- mmcv : 1.13.13
-- mmcv-full : 1.3.13
+- pytorch : 1.9.0
+- mmcv : 1.4.3
+- mmcv-full : 1.4.3
 - mmdet : 2.19.0
 - mmsegmentation : 0.20.0
 
@@ -42,10 +42,10 @@ apt-get update && apt-get install -y ffmpeg libsm6 libxext6 git ninja-build libg
 3. Install mmcv, mmcv-full, mmdet, mmsegmentation and mmdet3d
 ``` python
 # mmcv
-pip install mmcv==1.3.13
+pip install mmcv==v1.4.3
 
 # mmcv-full
-pip install mmcv-full==1.3.13 -f https://download.openmmlab.com/mmcv/dist/cu101/torch1.6.0/index.html
+pip install mmcv-full==v1.4.3 -f https://download.openmmlab.com/mmcv/dist/cu102/torch1.9.0/index.html
 
 # mmdet
 pip install mmdet==2.19.0
