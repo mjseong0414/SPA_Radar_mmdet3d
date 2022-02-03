@@ -2,11 +2,12 @@
 README is similar to MMdetection3D github (https://github.com/open-mmlab/mmdetection3d)
 
 ## Prerequisites
-- CUDA : 10.2
-- Cudnn : 7
-- pytorch : 1.9.0
-- mmcv : 1.4.3
-- mmcv-full : 1.4.3
+- CUDA : 11.1
+- Cudnn : 8
+- python : 3.7.11
+- pytorch : 1.10.0
+- mmcv : 1.3.16
+- mmcv-full : 1.3.16
 - mmdet : 2.19.0
 - mmsegmentation : 0.20.0
 
@@ -14,11 +15,11 @@ I didn't test other version of above packages.
 
 ## Install (You are able to pull docker image.)
 ``` python
-sudo docker pull tawn0414/spa_radar_mmdet3d:cuda10.2-torch1.9.0-mmcv1.4.3
+sudo docker pull tawn0414/spa_radar_mmdet3d:cuda11.1-cudnn8-torch1.10.0
 ```
 ``` python
 # Docker run
-sudo docker run --gpus all -it -v /home:/home -v /mnt:/mnt --shm-size=512g -p {port}:{port} --name {Container name} docker pull tawn0414/spa_radar_mmdet3d:cuda10.2-torch1.9.0-mmcv1.4.3 /bin/bash
+sudo docker run --gpus all -it -v /home:/home -v /mnt:/mnt --shm-size=512g -p {port}:{port} --name {Container name} tawn0414/spa_radar_mmdet3d:cuda11.1-cudnn8-torch1.10.0 /bin/bash
 
 # install SPA_Radar_mmdet3d
 git clone https://github.com/mjseong0414/SPA_Radar_mmdet3d.git
@@ -31,7 +32,7 @@ pip install --no-cache-dir -e .
 ## Install (start from scratch with docker)
 1. Docker command
 ``` python
-sudo docker run --gpus all -it -v /home:/home -v /mnt:/mnt --shm-size=512g -p {port}:{port} --name {Container name} pytorch/pytorch:1.9.0-cuda10.2-cudnn7-devel /bin/bash
+sudo docker run --gpus all -it -v /home:/home -v /mnt:/mnt --shm-size=512g -p {port}:{port} --name {Container name} tawn0414/spa_radar_mmdet3d:cuda11.1-cudnn8-torch1.10.0 /bin/bash
 ```
 
 2. Package Install
@@ -42,10 +43,10 @@ apt-get update && apt-get install -y ffmpeg libsm6 libxext6 git ninja-build libg
 3. Install mmcv, mmcv-full, mmdet, mmsegmentation and mmdet3d
 ``` python
 # mmcv
-pip install mmcv==v1.4.3
+pip install mmcv==1.3.16
 
 # mmcv-full
-pip install mmcv-full==v1.4.3 -f https://download.openmmlab.com/mmcv/dist/cu102/torch1.9.0/index.html
+pip install mmcv-full==1.3.16 -f https://download.openmmlab.com/mmcv/dist/cu111/torch1.9.0/index.html
 
 # mmdet
 pip install mmdet==2.19.0

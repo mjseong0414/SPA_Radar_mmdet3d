@@ -57,8 +57,8 @@ test_pipeline = [
     dict(
         type='LoadRadarPointsFromFile',
         coord_type='LIDAR',
-        load_dim=7,
-        use_dim=6,
+        load_dim=18,
+        # use_dim=6,
         file_client_args=file_client_args),
     dict(
         type='LoadRadarPointsFromMultiSweeps',

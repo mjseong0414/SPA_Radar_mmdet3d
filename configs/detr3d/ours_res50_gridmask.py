@@ -5,8 +5,8 @@ _base_ = [
 
 # If point cloud range is changed, the models should also change their point
 # cloud range accordingly
-point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
-voxel_size = [0.2, 0.2, 8]
+point_cloud_range = [-50, -50, -5, 50, 50, 3]
+voxel_size = [0.5, 0.5, 8]
 
 img_norm_cfg = dict(
     mean=[103.530, 116.280, 123.675], std=[1.0, 1.0, 1.0], to_rgb=False)
@@ -17,14 +17,14 @@ class_names = [
 ]
 
 input_modality = dict(
-    use_lidar=False,
+    use_lidar=True,
     use_camera=True,
     use_radar=False,
     use_map=False,
     use_external=False)
 
 model = dict(
-    type='Detr3D',
+    type='Detr3DFusion',
     use_grid_mask=True,
     img_backbone=dict(
         type='ResNet',
@@ -45,8 +45,36 @@ model = dict(
         add_extra_convs='on_output',
         num_outs=4,
         relu_before_extra_convs=True),
+    voxel_layer=dict(
+        max_num_points=20,
+        point_cloud_range=[-50, -50, -5, 50, 50, 3],
+        voxel_size=voxel_size,
+        max_voxels=(1500, 1500)), ##(training, testing)
+    pts_voxel_encoder=dict(
+        type='PillarFeatureNet',
+        in_channels=6,
+        feat_channels=[64],
+        with_distance=False,
+        voxel_size=voxel_size,
+        with_cluster_center=True,
+        with_voxel_center=True,
+        point_cloud_range=[-50, -50, -5, 50, 50, 3],
+        legacy=False),
+    pts_middle_encoder=dict(
+        type='PointPillarsScatter', in_channels=64, output_shape=[200, 200]),
+    pts_backbone=dict(
+        type='SECOND_v2',
+        in_channels=64,
+        layer_nums=[3, 5, 5],
+        layer_strides=[2, 2, 2],
+        out_channels=[64, 128, 256]),
+    PTS_neck=dict(
+        type='SECONDFPN_v2',
+        in_channels=[64, 128, 256],
+        out_channels=[128,128,128],
+        upsample_strides=[0.5,1,2]),
     pts_bbox_head=dict(
-        type='Detr3DHead',
+        type='Detr3DFusionHead',
         num_query=900,
         num_classes=10,
         in_channels=256,
@@ -54,9 +82,9 @@ model = dict(
         with_box_refine=True,
         as_two_stage=False,
         transformer=dict(
-            type='Detr3DTransformer',
+            type='Detr3DFusionTransformer',
             decoder=dict(
-                type='Detr3DTransformerDecoder',
+                type='Detr3DFusionTransformerDecoder',
                 num_layers=6,
                 return_intermediate=True,
                 transformerlayers=dict(
@@ -68,7 +96,7 @@ model = dict(
                             num_heads=8,
                             dropout=0.1),
                         dict(
-                            type='Detr3DCrossAtten',
+                            type='Detr3DFusionCrossAtten',
                             pc_range=point_cloud_range,
                             num_points=1,
                             embed_dims=256)
@@ -79,7 +107,7 @@ model = dict(
                                      'ffn', 'norm')))),
         bbox_coder=dict(
             type='NMSFreeCoder',
-            post_center_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
+            post_center_range=[-60, -60, -10.0, 60, 60, 10.0],
             pc_range=point_cloud_range,
             max_num=300,
             voxel_size=voxel_size,
@@ -110,59 +138,79 @@ model = dict(
             iou_cost=dict(type='IoUCost', weight=0.0), # Fake cost. This is just to make it compatible with DETR head. 
             pc_range=point_cloud_range))))
 
-dataset_type = 'NuScenesDataset'
+dataset_type = 'NuScenesRadarDataset'
 data_root = 'data/nuscenes/'
 
 file_client_args = dict(backend='disk')
 
-db_sampler = dict(
-    data_root=data_root,
-    info_path=data_root + 'nuscenes_dbinfos_train.pkl',
-    rate=1.0,
-    prepare=dict(
-        filter_by_difficulty=[-1],
-        filter_by_min_points=dict(
-            car=5,
-            truck=5,
-            bus=5,
-            trailer=5,
-            construction_vehicle=5,
-            traffic_cone=5,
-            barrier=5,
-            motorcycle=5,
-            bicycle=5,
-            pedestrian=5)),
-    classes=class_names,
-    sample_groups=dict(
-        car=2,
-        truck=3,
-        construction_vehicle=7,
-        bus=4,
-        trailer=6,
-        barrier=2,
-        motorcycle=6,
-        bicycle=6,
-        pedestrian=2,
-        traffic_cone=2),
-    points_loader=dict(
-        type='LoadPointsFromFile',
-        coord_type='LIDAR',
-        load_dim=5,
-        use_dim=[0, 1, 2, 3, 4],
-        file_client_args=file_client_args))
-
+# db_sampler = dict(
+#     data_root=data_root,
+#     info_path=data_root + 'nuscenes_dbinfos_train.pkl',
+#     rate=1.0,
+#     prepare=dict(
+#         filter_by_difficulty=[-1],
+#         filter_by_min_points=dict(
+#             car=5,
+#             truck=5,
+#             bus=5,
+#             trailer=5,
+#             construction_vehicle=5,
+#             traffic_cone=5,
+#             barrier=5,
+#             motorcycle=5,
+#             bicycle=5,
+#             pedestrian=5)),
+#     classes=class_names,
+#     sample_groups=dict(
+#         car=2,
+#         truck=3,
+#         construction_vehicle=7,
+#         bus=4,
+#         trailer=6,
+#         barrier=2,
+#         motorcycle=6,
+#         bicycle=6,
+#         pedestrian=2,
+#         traffic_cone=2),
+#     points_loader=dict(
+#         type='LoadPointsFromFile',
+#         coord_type='LIDAR',
+#         load_dim=5,
+#         use_dim=[0, 1, 2, 3, 4],
+#         file_client_args=file_client_args))
 train_pipeline = [
+    dict(
+        type='LoadRadarPointsFromFile',
+        coord_type='LIDAR',
+        load_dim=18,
+        # use_dim=6,
+        file_client_args=file_client_args),
+    dict(
+        type='LoadRadarPointsFromMultiSweeps',
+        sweeps_num=6,
+        file_client_args=file_client_args),
     dict(type='LoadMultiViewImageFromFiles', to_float32=True),
     dict(type='PhotoMetricDistortionMultiViewImage'),
     dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True, with_attr_label=False),
     dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='ObjectNameFilter', classes=class_names),
     dict(type='NormalizeMultiviewImage', **img_norm_cfg),
+    dict(type='PointShuffle'),
     dict(type='PadMultiViewImage', size_divisor=32),
     dict(type='DefaultFormatBundle3D', class_names=class_names),
-    dict(type='Collect3D', keys=['gt_bboxes_3d', 'gt_labels_3d', 'img'])
+    dict(type='Collect3D', keys=['points','img','gt_bboxes_3d', 'gt_labels_3d'])
 ]
 test_pipeline = [
+    dict(
+        type='LoadRadarPointsFromFile',
+        coord_type='LIDAR',
+        load_dim=18,
+        # use_dim=6,
+        file_client_args=file_client_args),
+    dict(
+        type='LoadRadarPointsFromMultiSweeps',
+        sweeps_num=6,
+        file_client_args=file_client_args),
     dict(type='LoadMultiViewImageFromFiles', to_float32=True),
     dict(type='NormalizeMultiviewImage', **img_norm_cfg),
     dict(type='PadMultiViewImage', size_divisor=32),
@@ -173,17 +221,24 @@ test_pipeline = [
         flip=False,
         transforms=[
             dict(
+                type='GlobalRotScaleTrans',
+                rot_range=[0, 0],
+                scale_ratio_range=[1., 1.],
+                translation_std=[0, 0, 0]),
+            dict(type='RandomFlip3D'),
+            dict(
+                type='PointsRangeFilter', point_cloud_range=point_cloud_range),
+            dict(
                 type='DefaultFormatBundle3D',
                 class_names=class_names,
                 with_label=False),
-            dict(type='Collect3D', keys=['img'])
+            dict(type='Collect3D', keys=['points','img'])
         ])
 ]
 
-
 data = dict(
     samples_per_gpu=1,
-    workers_per_gpu=4,
+    workers_per_gpu=0,
     train=dict(
         type=dataset_type,
         data_root=data_root,
