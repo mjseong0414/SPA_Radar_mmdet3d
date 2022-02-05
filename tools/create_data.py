@@ -7,6 +7,7 @@ from tools.data_converter import kitti_converter as kitti
 from tools.data_converter import lyft_converter as lyft_converter
 from tools.data_converter import nuscenes_converter as nuscenes_converter
 from tools.data_converter import nuscenes_radar_converter as nuscenes_radar_converter
+# from tools.data_converter import nuscenes_radar_converter_ori as nuscenes_radar_converter
 from tools.data_converter.create_gt_database import create_groundtruth_database
 
 
@@ -125,7 +126,7 @@ def nuscenes_radar_data_prep(root_path,
     nuscenes_radar_converter.export_2d_annotation(
         root_path, info_val_path, version=version)
     '''
-    create_groundtruth_database(dataset_name, root_path, info_prefix, f'{out_dir}/{info_prefix}_infos_train_Valid_filter_vel_rel_sweeps6.pkl')
+    # create_groundtruth_database(dataset_name, root_path, info_prefix, f'{out_dir}/{info_prefix}_infos_train_Valid_filter_vel_rel_sweeps6.pkl')
     
 
 def lyft_data_prep(root_path, info_prefix, version, max_sweeps=10):

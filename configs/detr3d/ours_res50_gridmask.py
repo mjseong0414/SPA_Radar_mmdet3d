@@ -45,7 +45,7 @@ model = dict(
         add_extra_convs='on_output',
         num_outs=4,
         relu_before_extra_convs=True),
-    voxel_layer=dict(
+    pts_voxel_layer=dict(
         max_num_points=20,
         point_cloud_range=[-50, -50, -5, 50, 50, 3],
         voxel_size=voxel_size,
@@ -67,11 +67,11 @@ model = dict(
         in_channels=64,
         layer_nums=[3, 5, 5],
         layer_strides=[2, 2, 2],
-        out_channels=[64, 128, 256]),
-    PTS_neck=dict(
+        out_channels=[128, 256, 512]),
+    pts_neck=dict(
         type='SECONDFPN_v2',
-        in_channels=[64, 128, 256],
-        out_channels=[128,128,128],
+        in_channels=[128, 256, 512],
+        out_channels=[256,256,256],
         upsample_strides=[0.5,1,2]),
     pts_bbox_head=dict(
         type='Detr3DFusionHead',
@@ -188,6 +188,8 @@ train_pipeline = [
     dict(
         type='LoadRadarPointsFromMultiSweeps',
         sweeps_num=6,
+        data_root='/mnt/sda/minjae/nuscenes/',
+        version='v1.0-trainval',
         file_client_args=file_client_args),
     dict(type='LoadMultiViewImageFromFiles', to_float32=True),
     dict(type='PhotoMetricDistortionMultiViewImage'),
@@ -200,6 +202,43 @@ train_pipeline = [
     dict(type='DefaultFormatBundle3D', class_names=class_names),
     dict(type='Collect3D', keys=['points','img','gt_bboxes_3d', 'gt_labels_3d'])
 ]
+eval_pipeline = [
+    dict(
+        type='LoadRadarPointsFromFile',
+        coord_type='LIDAR',
+        load_dim=18,
+        # use_dim=6,
+        file_client_args=file_client_args),
+    dict(
+        type='LoadRadarPointsFromMultiSweeps',
+        data_root='/mnt/sda/minjae/nuscenes/',
+        version='v1.0-trainval',
+        sweeps_num=6,
+        file_client_args=file_client_args),
+    dict(type='LoadMultiViewImageFromFiles', to_float32=True),
+    dict(type='NormalizeMultiviewImage', **img_norm_cfg),
+    dict(type='PadMultiViewImage', size_divisor=32),
+    dict(
+        type='MultiScaleFlipAug3D',
+        img_scale=(1333, 800),
+        pts_scale_ratio=1,
+        flip=False,
+        transforms=[
+            dict(
+                type='GlobalRotScaleTrans',
+                rot_range=[0, 0],
+                scale_ratio_range=[1., 1.],
+                translation_std=[0, 0, 0]),
+            dict(type='RandomFlip3D'),
+            dict(
+                type='PointsRangeFilter', point_cloud_range=point_cloud_range),
+            dict(
+                type='DefaultFormatBundle3D',
+                class_names=class_names,
+                with_label=False),
+            dict(type='Collect3D', keys=['points','img'])
+        ])
+]
 test_pipeline = [
     dict(
         type='LoadRadarPointsFromFile',
@@ -209,6 +248,8 @@ test_pipeline = [
         file_client_args=file_client_args),
     dict(
         type='LoadRadarPointsFromMultiSweeps',
+        data_root='/mnt/sda/minjae/nuscenes/',
+        version='v1.0-test',
         sweeps_num=6,
         file_client_args=file_client_args),
     dict(type='LoadMultiViewImageFromFiles', to_float32=True),
@@ -238,7 +279,7 @@ test_pipeline = [
 
 data = dict(
     samples_per_gpu=1,
-    workers_per_gpu=0,
+    workers_per_gpu=4,
     train=dict(
         type=dataset_type,
         data_root=data_root,
@@ -248,11 +289,13 @@ data = dict(
         modality=input_modality,
         test_mode=False,
         use_valid_flag=True,
+        # official gt란 레이더 포인트가 없는 GT박스도 포함된 것. pickle파일에는 레이더 포인트가 없는 GT박스는 제거했음.
+        use_official_gt=True,
         # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
         # and box_type_3d='Depth' in sunrgbd and scannet dataset.
         box_type_3d='LiDAR'),
-    val=dict(pipeline=test_pipeline, ann_file = data_root +'nuscenes_infos_val_Valid_filter_vel_rel_sweeps6.pkl', classes=class_names, modality=input_modality),
-    test=dict(pipeline=test_pipeline, ann_file = data_root +'nuscenes_infos_val_Valid_filter_vel_rel_sweeps6.pkl', classes=class_names, modality=input_modality))
+    val=dict(pipeline=eval_pipeline, ann_file = data_root +'nuscenes_infos_val_Valid_filter_vel_rel_sweeps6.pkl', classes=class_names, modality=input_modality),
+    test=dict(pipeline=eval_pipeline, ann_file = data_root +'nuscenes_infos_val_Valid_filter_vel_rel_sweeps6.pkl', classes=class_names, modality=input_modality))
 
 optimizer = dict(
     type='AdamW', 
@@ -271,8 +314,8 @@ lr_config = dict(
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3)
 total_epochs = 24
-evaluation = dict(interval=12, pipeline=test_pipeline)
+evaluation = dict(interval=24, pipeline=test_pipeline)
 checkpoint_config = dict(interval=4)
 
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-load_from='/home/spalab/jskim/SPA_Radar_mmdet3d/work_dirs/fcos3d_res50_0124.pth'
+load_from='/home/spalab/jskim/SPA_Radar_mmdet3d/work_dirs/fcos3d_res50_fusion_256.pth'

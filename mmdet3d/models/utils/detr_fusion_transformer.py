@@ -247,7 +247,7 @@ class Detr3DFusionCrossAtten(BaseModule):
                  norm_cfg=None,
                  init_cfg=None,
                  batch_first=False):
-        super(Detr3DCrossAtten, self).__init__(init_cfg)
+        super(Detr3DFusionCrossAtten, self).__init__(init_cfg)
         if embed_dims % num_heads != 0:
             raise ValueError(f'embed_dims must be divisible by num_heads, '
                              f'but got {embed_dims} and {num_heads}')
@@ -279,8 +279,9 @@ class Detr3DFusionCrossAtten(BaseModule):
         self.num_heads = num_heads
         self.num_points = num_points
         self.num_cams = num_cams
-        self.attention_weights = nn.Linear(embed_dims,
+        self.img_attention_weights = nn.Linear(embed_dims,
                                            num_cams*num_levels*num_points)
+        self.pts_attention_weights = nn.Linear(embed_dims,1*3*num_points)
 
         self.output_proj = nn.Linear(embed_dims, embed_dims)
       
@@ -298,7 +299,8 @@ class Detr3DFusionCrossAtten(BaseModule):
 
     def init_weight(self):
         """Default initialization for Parameters of Module."""
-        constant_init(self.attention_weights, val=0., bias=0.)
+        constant_init(self.img_attention_weights, val=0., bias=0.)
+        constant_init(self.pts_attention_weights, val=0., bias=0.)
         xavier_init(self.output_proj, distribution='uniform', bias=0.)
 
     def forward(self,
@@ -360,29 +362,39 @@ class Detr3DFusionCrossAtten(BaseModule):
 
         bs, num_query, _ = query.size()
 
-        attention_weights = self.attention_weights(query).view(
+        img_attention_weights = self.img_attention_weights(query).view(
             bs, 1, num_query, self.num_cams, self.num_points, self.num_levels)
+        pts_attention_weights = self.pts_attention_weights(query).view(
+            bs, 1, num_query, 1, self.num_points, 3)
+        mlvl_feats , pts_feats = value
+
+        reference_points_3d, output, mask = img_feature_sampling(
+            mlvl_feats , reference_points, self.pc_range, kwargs['img_metas'])
+        pts_output = radar_feature_sampling(pts_feats , reference_points)
         
-        reference_points_3d, output, mask = feature_fusion_sampling(
-            value, reference_points, self.pc_range, kwargs['img_metas'])
+        attention_img = img_attention_weights.sigmoid() * mask
+        attention_pts = pts_attention_weights.sigmoid()
+        pts_output = torch.nan_to_num(pts_output)
         output = torch.nan_to_num(output)
         mask = torch.nan_to_num(mask)
 
-        attention_weights = attention_weights.sigmoid() * mask
-        output = output * attention_weights
+        output = output * attention_img
         output = output.sum(-1).sum(-1).sum(-1)
         output = output.permute(2, 0, 1)
         
+        pts_output = pts_output * attention_pts
+        pts_output = pts_output.sum(-1).sum(-1).sum(-1)
+        pts_output = pts_output.permute(2, 0, 1)
+
         output = self.output_proj(output)
+        pts_output = self.output_proj(pts_output)
         # (num_query, bs, embed_dims)
         pos_feat = self.position_encoder(inverse_sigmoid(reference_points_3d)).permute(1, 0, 2)
 
-        return self.dropout(output) + inp_residual + pos_feat
+        return self.dropout(output) + self.dropout(pts_output) + inp_residual + pos_feat
 
 ###############################################################################
-def feature_fusion_sampling(feats, reference_points, pc_range, img_metas):
-    breakpoint()
-    mlvl_feats , pts_feats = feats
+def img_feature_sampling(mlvl_feats, reference_points, pc_range, img_metas):
     lidar2img = []
     for img_meta in img_metas:
         lidar2img.append(img_meta['lidar2img'])
@@ -424,3 +436,21 @@ def feature_fusion_sampling(feats, reference_points, pc_range, img_metas):
     sampled_feats = torch.stack(sampled_feats, -1)
     sampled_feats = sampled_feats.view(B, C, num_query, num_cam,  1, len(mlvl_feats))
     return reference_points_3d, sampled_feats, mask
+
+def radar_feature_sampling(pts_feats, reference_points):
+    B, num_query = reference_points.size()[:2]
+    reference_points = reference_points.clone()
+    reference_points = reference_points[...,0:2]
+    reference_points = reference_points.view(1,900,1,2).repeat(3,1,1,1)
+    sampled_feats = []
+    for lvl,feat in enumerate(pts_feats):
+        B, C, H, W = feat.size()
+        C_3 = int(C/3)
+        feat = feat.view(B*3, C_3, H, W)
+        sampled_feat = F.grid_sample(feat, reference_points)
+        sampled_feat = sampled_feat.view(B, 3, C_3, num_query, 1).permute(0, 2, 3, 1, 4)
+        sampled_feats.append(sampled_feat)
+    sampled_feats = torch.stack(sampled_feats, -1)
+    sampled_feats = sampled_feats.view(B, C_3, num_query, 3,  1, len(pts_feats))
+    return sampled_feats
+    

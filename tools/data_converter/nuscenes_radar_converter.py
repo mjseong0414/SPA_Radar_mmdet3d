@@ -204,13 +204,13 @@ def _fill_trainval_infos_official(nusc,nusc_can,
         radar_fl_path,_,_ = nusc.get_sample_data(radar_fl_token)
         radar_bl_path,_,_ = nusc.get_sample_data(radar_bl_token)
         radar_br_path,_,_ = nusc.get_sample_data(radar_br_token)
-        # radar_path = [radar_f_path, radar_fr_path, radar_fl_path, radar_bl_path, radar_br_path]
+        radar_path = [radar_f_path, radar_fr_path, radar_fl_path, radar_bl_path, radar_br_path]
         radar_npy = make_multisweep_radar_data_official(nusc,nusc_can,sample,radar_version,max_sweeps,root_path)
         mmcv.check_file_exist(lidar_path)
-
+        
         info = {
             'lidar_path': lidar_path,
-            'radar_path': radar_f_path,
+            'radar_path': radar_path,
             'token': sample['token'],
             'sweeps': [],
             'radar_sweeps':[],
@@ -263,6 +263,7 @@ def _fill_trainval_infos_official(nusc,nusc_can,
         
         for radar in radar_types:
             sd_rec = nusc.get('sample_data', sample['data'][radar])
+            breakpoint()
             if radar == 'RADAR_FRONT':
                 sweeps_bucket = RF_sweeps
             elif radar == 'RADAR_FRONT_RIGHT':
@@ -414,6 +415,7 @@ def make_multisweep_radar_data_official(nusc, nusc_can, sample, radar_version, m
         radar_data_token = sample['data'][radar_channel]
         radar_sample_data = nusc.get('sample_data',radar_data_token)
         ref_radar_time = radar_sample_data['timestamp']
+        breakpoint()
 
         # At each sweep, We need to merge data from 5 directions
         for _ in range(max_sweeps):

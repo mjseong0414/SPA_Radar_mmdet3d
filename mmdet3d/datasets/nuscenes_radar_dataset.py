@@ -5,7 +5,7 @@ import pyquaternion
 from pathlib import Path
 import json
 import tempfile
-from nuscenes_radar_devkit.utils.data_classes import Box as NuScenesBox
+from nuscenes.utils.data_classes import Box as NuScenesBox
 from os import path as osp
 
 from mmdet.datasets import DATASETS
@@ -155,7 +155,7 @@ class NuScenesRadarDataset(Custom3DDataset):
 
         self.with_velocity = with_velocity
         self.eval_version = eval_version
-        from nuscenes_radar_devkit.eval.detection.config import config_factory
+        from nuscenes.eval.detection.config import config_factory
         self.eval_detection_configs = config_factory(self.eval_version)
         if self.modality is None:
             self.modality = dict(
@@ -233,6 +233,7 @@ class NuScenesRadarDataset(Custom3DDataset):
         pts_filename=info['lidar_path'],
         radar_pts_filename=info['radar_path'],
         sweeps=info['sweeps'],
+        radar_sweeps = info['radar_sweeps'],
         timestamp=info['timestamp'] / 1e6,
         )
 
@@ -418,8 +419,8 @@ class NuScenesRadarDataset(Custom3DDataset):
         Returns:
             dict: Dictionary of evaluation details.
         """
-        from nuscenes_radar_devkit.nuscenes import NuScenes
-        from nuscenes_radar_devkit.eval.detection.evaluate import NuScenesEval
+        from nuscenes.nuscenes import NuScenes
+        from nuscenes.eval.detection.evaluate import NuScenesEval
         output_dir = osp.join(*osp.split(result_path)[:-1])
         nusc = NuScenes(version=self.version, dataroot=self.data_root, verbose=False)
         eval_set_map = {
@@ -613,124 +614,8 @@ class NuScenesRadarDataset(Custom3DDataset):
             show_result(points, show_gt_bboxes, show_pred_bboxes, out_dir,
                         file_name, show)
 
-    @property
-    def ground_truth_bbox(self):
-        if "gt_boxes" not in self.data_infos[0]:
-            return None
-        from nuscenes_radar_devkit.eval.detection.config import config_factory
-        from nuscenes_radar_devkit.eval.detection.config import DetectionConfig
-        from nuscenes_radar_devkit.eval.common.data_classes import EvalBoxes
-        from nuscenes_radar_devkit.eval.detection.data_classes import DetectionBox
-        data_set_check = {'car':0,'pedestrian':0,'motorcycle':0,'truck':0,'bus':0}
-        cfg = config_factory(self.eval_version)
-        cls_range_map = cfg.class_range
-        mapped_class_names = self.CLASSES
-        object_type = 'st'
-        unified_AP=False
-        gt_annos={}
-        for info in self.data_infos:
-            # import pdb; pdb.set_trace()
-            sample_boxes = []
-            sample_token = info['token']
-            annos=[]
-            boxes = _second_gt_to_nusc_box(info, mapped_class_names, object_type)
-            for idx, box in enumerate(boxes):
-                name = mapped_class_names[box.label]
-                data_set_check[name]+=1
-                if unified_AP:
-                    name='car'
-                velocity = box.velocity[:2].tolist()
-                radar_pts = int(info['num_radar_pts'][idx])
-                nusc_anno={
-                        'sample_token':sample_token,
-                        'translation':box.center.tolist(),
-                        'size':box.wlh.tolist(),
-                        'rotation':box.orientation.elements.tolist(),
-                        'velocity':velocity,
-                        'num_pts':radar_pts,
-                        'detection_name':name,
-                        'detection_score':-1.0,  # GT samples do not have a score.
-                        'attribute_name':NuScenesRadarDataset.DefaultAttribute[name]
-                }
-                annos.append(nusc_anno)
-            gt_annos[sample_token] = annos
-        print(data_set_check)
-        return gt_annos
-
-def _second_gt_to_nusc_box(info, Label_class, object_type):
-    # Class = ['car', 'bicycle', 'bus', 'construction_vehicle', 'motorcycle', 'pedestrian', 'traffic_cone', 'trailer', 'truck', 'barrier']
-    Class = ['car', 'bicycle', 'bus', 'construction_vehicle', 'motorcycle', 'pedestrian',  'trailer', 'truck']
-    # Label_class = ['car','bus',"motorcycle","pedestrian","truck"]
-    # import pdb; pdb.set_trace()
-    from nuscenes_radar_devkit.utils.data_classes import Box
-    import pyquaternion
-    box3d = info['gt_boxes']
-    labels = info['gt_names']
-    velocity_ = info['gt_velocity']
-    Vel = np.sqrt(np.sum(velocity_**2,axis=1))
-
-    ## for changing gt box range
-    box_x_mask = np.where(np.abs(box3d[:,0])<20)
-    box_y_mask = np.where(np.abs(box3d[:,1])<50)
-
-    ## Object Type masking
-    if object_type == 'static':
-        box_type_mask = np.where(Vel<=0.2)
-    elif object_type == 'dynamic':
-        box_type_mask = np.where(Vel>0.2)
-    else:
-        box_type_mask = np.where(Vel>=0)
-
-    box_mask_vel = np.intersect1d(box_x_mask ,box_y_mask)
-    box_mask = np.intersect1d(box_mask_vel,box_type_mask)
-    box3d= box3d[box_mask]
-    labels = labels[box_mask]
-    
-    scores = -1*np.ones(len(box3d))
-    box3d[:, 6] = -box3d[:, 6] - np.pi / 2
-    rotation = info['lidar2ego_rotation']
-    translation = info['lidar2ego_translation']
-    box_list = []
-    for i in range(box3d.shape[0]):
-        from nuscenes_radar_devkit.eval.detection.config import config_factory
-        from nuscenes_radar_devkit.eval.detection.config import DetectionConfig
-        quat = pyquaternion.Quaternion(axis=[0, 0, 1], radians=box3d[i, 6])
-        velocity = (np.nan, np.nan, np.nan)
-        if labels[i] not in Class:
-            continue
-        else:
-            change_label = NuScenesRadarDataset.Target_Mapping[labels[i]]
-            label = Label_class.index(change_label)
-        if box3d.shape[1] == 9:
-            velocity = (*box3d[i, 7:9], 0.0)
-            # velo_val = np.linalg.norm(box3d[i, 7:9])
-            # velo_ori = box3d[i, 6]
-            # velocity = (velo_val * np.cos(velo_ori), velo_val * np.sin(velo_ori), 0.0)
-        # import pdb; pdb.set_trace()
-        box = Box(
-            box3d[i, :3],
-            box3d[i, 3:6],
-            quat,
-            label=label,
-            score=scores[i],
-            velocity=velocity)
-
-        box.rotate(pyquaternion.Quaternion(rotation))
-        box.translate(translation)
-        cfg = config_factory("detection_cvpr_2019")
-        cls_range_map = cfg.class_range
-        radius = np.linalg.norm(box.center[:2], 2)
-        det_range = cls_range_map[Class[box.label]]
-        if radius > det_range:
-            continue
-        box.rotate(pyquaternion.Quaternion(info['ego2global_rotation']))
-        box.translate(np.array(info['ego2global_translation']))
-        box_list.append(box)
-    return box_list
-
-
 def output_to_nusc_box(detection):
-    from nuscenes_radar_devkit.utils.data_classes import Box
+    from nuscenes.utils.data_classes import Box
     """Convert the output to the box class in the nuScenes.
 
     Args:

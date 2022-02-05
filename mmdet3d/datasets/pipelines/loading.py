@@ -10,7 +10,7 @@ from mmdet.datasets.pipelines import LoadAnnotations, LoadImageFromFile
 
 from nuscenes_radar_devkit.utils.data_classes import RadarPointCloud
 from pyquaternion import Quaternion
-from nuscenes_radar_devkit.nuscenes import NuScenes
+from nuscenes.nuscenes import NuScenes
 
 @PIPELINES.register_module()
 class LoadMultiViewImageFromFiles(object):
@@ -278,10 +278,6 @@ class LoadRadarPointsFromMultiSweeps(object):
         self.pad_empty_sweeps = pad_empty_sweeps
         self.remove_close = remove_close
         self.test_mode = test_mode
-        
-        assert data_root == None, "You need to put data_root in the config file."
-        assert version == None, "You need to put version in the config file."
-        
         self.nusc = NuScenes(version=version, dataroot=data_root, verbose=True)
 
     def point_filtering(self, pc, filter_version):
@@ -383,23 +379,26 @@ class LoadRadarPointsFromMultiSweeps(object):
         points = results['points']
         # points.tensor[:, 4] = 0 # 왜 0으로 고정시키는거지?? time stamp 차이?
         sweep_points_list = [points]
-        ts = results['timestamp']
-        if self.pad_empty_sweeps and len(results['sweeps']) == 0:
+        # ts = results['timestamp']
+        if self.pad_empty_sweeps and len(results['radar_sweeps']) == 0:
             for i in range(self.sweeps_num):
                 if self.remove_close:
                     sweep_points_list.append(self._remove_close(points))
                 else:
                     sweep_points_list.append(points)
         else:
-            if len(results['sweeps']) <= (self.sweeps_num * 5): # 레이더 수 = 5개
-                choices = np.arange(len(results['sweeps']))
+            if len(results['radar_sweeps']) <= (self.sweeps_num * 5): # 레이더 수 = 5개
+                choices = np.arange(len(results['radar_sweeps']))
             elif self.test_mode:
                 choices = np.arange(self.sweeps_num)
             else:
                 choices = np.random.choice(
-                    len(results['sweeps']), self.sweeps_num, replace=False)
+                    len(results['radar_sweeps']), self.sweeps_num, replace=False)
             for idx in choices:
-                sweep_token = results['sweeps'][idx]
+                """test
+                sweep_token = 'bddd80ae33ec4e32b27fdb3c1160a30e'
+                """
+                sweep_token = results['radar_sweeps'][idx]
                 sweep = self.nusc.get('sample_data', sweep_token)
                 points_sweep = self._load_points(self.nusc.get_sample_data_path(sweep_token)) # x, y, z, RCS, vx_comp, vy_comp
                 if points_sweep == 'No_point':
@@ -407,8 +406,9 @@ class LoadRadarPointsFromMultiSweeps(object):
                 # points_sweep = np.copy(points_sweep)
                 if self.remove_close:
                     points_sweep = self._remove_close(points_sweep)
-                sweep_ts = sweep['timestamp'] / 1e6 
-                
+                sweep_ts = sweep['timestamp'] / 1e6
+                if idx % self.sweeps_num == 0:
+                    ref_ts = sweep['timestamp'] / 1e6
                 ### create sensor2lidar_rot/tran start ###
                 sample = self.nusc.get('sample', sweep['sample_token'])
                 ref_sd_rec = self.nusc.get('sample_data', sample['data']["LIDAR_TOP"])
@@ -423,7 +423,7 @@ class LoadRadarPointsFromMultiSweeps(object):
                 e2g_r_mat = Quaternion(e2g_r).rotation_matrix
                 radar_cs_record = self.nusc.get('calibrated_sensor',sweep['calibrated_sensor_token'])
                 radar_pose_record = self.nusc.get('ego_pose', sweep['ego_pose_token'])
-                time_gap = ts - sweep_ts
+                time_gap = ref_ts - sweep_ts
                 # points_sweep = point_filtering(current_pc, filter_version='Valid_filter') ### 뭐하는 함수?
                 points_sweep[:, :2] += points_sweep[:, 4:6] * time_gap
                 # radar_point to lidar top coordinate
@@ -754,7 +754,6 @@ class LoadRadarPointsFromFile(object):
         try:
             # x y z dyn_prop id rcs vx vy vx_comp vy_comp is_quality_valid ambig_state x_rms y_rms invalid_state pdh0 vx_rms vy_rms
             raw_points = RadarPointCloud.from_file(pts_filename).points.T
-            raw_points = raw_points[:, self.load_dim]
             xyz = raw_points[:, :3]
             rcs = raw_points[:, 5].reshape(-1, 1)
             vxy_comp = raw_points[:, 8:10]
@@ -780,9 +779,10 @@ class LoadRadarPointsFromFile(object):
 
                 - points (:obj:`BasePoints`): Point clouds data.
         """
+        
         points = np.zeros((0, 6)) # x, y, z, RCS, vx_comp, vy_comp
         # 5개 레이더 센서 포인트를 하나로 묶어줌
-        for pts_filename in results['radar_pts_filenames']:
+        for pts_filename in results['radar_pts_filename']:
             point = self._load_points(pts_filename)
             points = np.concatenate((points, point))
         attribute_dims = None

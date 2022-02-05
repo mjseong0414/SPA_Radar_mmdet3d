@@ -225,7 +225,6 @@ class NuScenesRadarDataset(Custom3DDataset):
         """
         info = self.data_infos[index]
         # standard protocal modified from SECOND.Pytorch
-        import pdb; pdb.set_trace()
         input_dict = dict(
             sample_idx=info['token'],
             pts_filename=info['radar_path'],
