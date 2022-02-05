@@ -32,7 +32,9 @@ pip install --no-cache-dir -e .
 ## Install (start from scratch with docker)
 1. Docker command
 ``` python
-sudo docker run --gpus all -it -v /home:/home -v /mnt:/mnt --shm-size=512g -p {port}:{port} --name {Container name} tawn0414/spa_radar_mmdet3d:cuda11.1-cudnn8-torch1.10.0 /bin/bash
+sudo docker run --gpus all -it -v /home:/home -v /mnt:/mnt --shm-size=512g -p {port}:{port} --name {Container name} {image name} /bin/bash
+
+# install python, pytorch, CUDA and Cudnn yourself.
 ```
 
 2. Package Install
