@@ -14,3 +14,14 @@ python tools/test.py ${CONFIG_FILE} ${CHECKPOINT_FILE} [--out ${RESULT_FILE}] [-
 
 # radar test command
 python tools/test.py work_dirs/radar_votenet_ovft1/radar_votenet_ovft.py work_dirs/radar_votenet_ovft1/epoch_9.pth --eval mAP --use-radar-nusc
+
+
+
+########### Fusion Training ############
+CUDA_VISIBLE_DEVICES=0,1,2,3 PORT=29500 ./tools/dist_train.sh configs/detr3d/ours_res50_gridmask.py 4 --work-dir work_dirs/ours_res50_fusion_radar256/ --resume-from work_dirs/ours_res50_fusion_radar256/epoch_16.pth --autoscale-lr
+
+########### Fusion Test     ############
+python tools/test.py configs/detr3d/ours_res50_gridmask.py work_dirs/ours_res50_fusion_radar256/latest.pth --eval mAP --use-radar-nusc
+
+### Don't use ###
+CUDA_VISIBLE_DEVICES=0,1,2,3 PORT=29502 ./tools/dist_test.sh configs/detr3d/ours_res50_gridmask.py work_dirs/ours_res50_fusion_radar256/latest.pth 4 --eval mAP --use-radar-nusc

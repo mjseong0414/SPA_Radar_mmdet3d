@@ -367,11 +367,11 @@ class Detr3DFusionCrossAtten(BaseModule):
         pts_attention_weights = self.pts_attention_weights(query).view(
             bs, 1, num_query, 1, self.num_points, 3)
         mlvl_feats , pts_feats = value
-
+        # breakpoint()
         reference_points_3d, output, mask = img_feature_sampling(
             mlvl_feats , reference_points, self.pc_range, kwargs['img_metas'])
         pts_output = radar_feature_sampling(pts_feats , reference_points)
-        
+
         attention_img = img_attention_weights.sigmoid() * mask
         attention_pts = pts_attention_weights.sigmoid()
         pts_output = torch.nan_to_num(pts_output)

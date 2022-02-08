@@ -99,7 +99,6 @@ class Custom3DDataset(Dataset):
         info = self.data_infos[index]
         sample_idx = info['point_cloud']['lidar_idx']
         pts_filename = osp.join(self.data_root, info['pts_path'])
-        
         input_dict = dict(
             pts_filename=pts_filename,
             sample_idx=sample_idx,
@@ -167,6 +166,7 @@ class Custom3DDataset(Dataset):
         Returns:
             dict: Testing data dict of the corresponding index.
         """
+        # breakpoint()
         input_dict = self.get_data_info(index)
         self.pre_pipeline(input_dict)
         example = self.pipeline(input_dict)

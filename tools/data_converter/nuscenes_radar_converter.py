@@ -263,7 +263,6 @@ def _fill_trainval_infos_official(nusc,nusc_can,
         
         for radar in radar_types:
             sd_rec = nusc.get('sample_data', sample['data'][radar])
-            breakpoint()
             if radar == 'RADAR_FRONT':
                 sweeps_bucket = RF_sweeps
             elif radar == 'RADAR_FRONT_RIGHT':
@@ -415,7 +414,6 @@ def make_multisweep_radar_data_official(nusc, nusc_can, sample, radar_version, m
         radar_data_token = sample['data'][radar_channel]
         radar_sample_data = nusc.get('sample_data',radar_data_token)
         ref_radar_time = radar_sample_data['timestamp']
-        breakpoint()
 
         # At each sweep, We need to merge data from 5 directions
         for _ in range(max_sweeps):

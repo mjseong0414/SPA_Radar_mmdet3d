@@ -227,7 +227,7 @@ class Detr3DFusion(MVXTwoStageDetector):
 
         bbox_list = [dict() for i in range(len(img_metas))]
         bbox_pts = self.simple_test_pts(
-            pts_feats, img_feats, img_metas, rescale=rescale)
+            img_feats, pts_feats, img_metas, rescale=rescale)
         for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
             result_dict['pts_bbox'] = pts_bbox
         return bbox_list

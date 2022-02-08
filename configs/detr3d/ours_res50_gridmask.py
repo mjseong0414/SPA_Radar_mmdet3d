@@ -127,7 +127,7 @@ model = dict(
         loss_iou=dict(type='GIoULoss', loss_weight=0.0)),
     # model training and testing settings
     train_cfg=dict(pts=dict(
-        grid_size=[512, 512, 1],
+        grid_size=[200, 200, 1],
         voxel_size=voxel_size,
         point_cloud_range=point_cloud_range,
         out_size_factor=4,
@@ -294,8 +294,8 @@ data = dict(
         # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
         # and box_type_3d='Depth' in sunrgbd and scannet dataset.
         box_type_3d='LiDAR'),
-    val=dict(pipeline=eval_pipeline, ann_file = data_root +'nuscenes_infos_val_Valid_filter_vel_rel_sweeps6.pkl', classes=class_names, modality=input_modality),
-    test=dict(pipeline=eval_pipeline, ann_file = data_root +'nuscenes_infos_val_Valid_filter_vel_rel_sweeps6.pkl', classes=class_names, modality=input_modality))
+    val=dict(type=dataset_type,pipeline=eval_pipeline, ann_file = data_root +'nuscenes_infos_val_Valid_filter_vel_rel_sweeps6.pkl', classes=class_names, modality=input_modality),
+    test=dict(type=dataset_type,pipeline=eval_pipeline, ann_file = data_root +'nuscenes_infos_val_Valid_filter_vel_rel_sweeps6.pkl', classes=class_names, modality=input_modality))
 
 optimizer = dict(
     type='AdamW', 

@@ -227,15 +227,15 @@ class NuScenesRadarDataset(Custom3DDataset):
         """
         info = self.data_infos[index]
         # standard protocal modified from SECOND.Pytorch
-        
+        # breakpoint()
         input_dict = dict(
-        sample_idx=info['token'],
-        pts_filename=info['lidar_path'],
-        radar_pts_filename=info['radar_path'],
-        sweeps=info['sweeps'],
-        radar_sweeps = info['radar_sweeps'],
-        timestamp=info['timestamp'] / 1e6,
-        )
+            sample_idx=info['token'],
+            pts_filename=info['lidar_path'],
+            radar_pts_filename=info['radar_path'],
+            sweeps=info['sweeps'],
+            radar_sweeps = info['radar_sweeps'],
+            timestamp=info['timestamp'] / 1e6,
+            )
 
         if self.modality['use_camera']:
             image_paths = []
@@ -422,7 +422,8 @@ class NuScenesRadarDataset(Custom3DDataset):
         from nuscenes.nuscenes import NuScenes
         from nuscenes.eval.detection.evaluate import NuScenesEval
         output_dir = osp.join(*osp.split(result_path)[:-1])
-        nusc = NuScenes(version=self.version, dataroot=self.data_root, verbose=False)
+        # breakpoint()
+        nusc = NuScenes(version=self.version, dataroot='/mnt/sda/minjae/nuscenes/', verbose=False)
         eval_set_map = {
             'v1.0-mini': 'mini_val',
             'v1.0-trainval': 'val',
