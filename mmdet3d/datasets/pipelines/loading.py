@@ -278,7 +278,7 @@ class LoadRadarPointsFromMultiSweeps(object):
         self.pad_empty_sweeps = pad_empty_sweeps
         self.remove_close = remove_close
         self.test_mode = test_mode
-        self.nusc = NuScenes(version=version, dataroot=data_root, verbose=True)
+        self.nusc = NuScenes(version=version, dataroot=data_root, verbose=False)
 
     def point_filtering(self, pc, filter_version):
         if filter_version == 'No_filter_V1':
@@ -300,7 +300,8 @@ class LoadRadarPointsFromMultiSweeps(object):
                 dyn_list = np.array([idx for idx,point in enumerate(dyn) if point in dyn_criteria])
                 intersect = np.intersect1d(ambig_list,dyn_list,valid_list)
             if len(intersect) == 0:
-                return 'No_point'
+                no_point_mask = np.ma.make_mask(np.zeros(len(pc)),shrink=False)
+                return pc[no_point_mask]
             else:
                 if filter_version == 'No_filter_V2':
                     pc[intersect,3] == 1 # valid point
@@ -326,8 +327,6 @@ class LoadRadarPointsFromMultiSweeps(object):
             # x y z dyn_prop id rcs vx vy vx_comp vy_comp is_quality_valid ambig_state x_rms y_rms invalid_state pdh0 vx_rms vy_rms
             raw_points = RadarPointCloud.from_file(pts_filename).points.T
             filtered_points = self.point_filtering(raw_points, filter_version='Valid_filter')
-            if filtered_points == 'No_point':
-                return 'No_point'
             xyz = filtered_points[:, :3]
             rcs = filtered_points[:, 5].reshape(-1, 1)
             vxy_comp = filtered_points[:, 8:10]
@@ -401,8 +400,6 @@ class LoadRadarPointsFromMultiSweeps(object):
                 sweep_token = results['radar_sweeps'][idx]
                 sweep = self.nusc.get('sample_data', sweep_token)
                 points_sweep = self._load_points(self.nusc.get_sample_data_path(sweep_token)) # x, y, z, RCS, vx_comp, vy_comp
-                if points_sweep == 'No_point':
-                    continue
                 # points_sweep = np.copy(points_sweep)
                 if self.remove_close:
                     points_sweep = self._remove_close(points_sweep)

@@ -284,6 +284,7 @@ class Detr3DFusionCrossAtten(BaseModule):
         self.pts_attention_weights = nn.Linear(embed_dims,1*3*num_points)
 
         self.output_proj = nn.Linear(embed_dims, embed_dims)
+        self.pts_output_proj = nn.Linear(embed_dims, embed_dims)
       
         self.position_encoder = nn.Sequential(
             nn.Linear(3, self.embed_dims), 
@@ -302,6 +303,7 @@ class Detr3DFusionCrossAtten(BaseModule):
         constant_init(self.img_attention_weights, val=0., bias=0.)
         constant_init(self.pts_attention_weights, val=0., bias=0.)
         xavier_init(self.output_proj, distribution='uniform', bias=0.)
+        xavier_init(self.pts_output_proj, distribution='uniform', bias=0.)
 
     def forward(self,
                 query,
@@ -387,7 +389,7 @@ class Detr3DFusionCrossAtten(BaseModule):
         pts_output = pts_output.permute(2, 0, 1)
 
         output = self.output_proj(output)
-        pts_output = self.output_proj(pts_output)
+        pts_output = self.pts_output_proj(pts_output)
         # (num_query, bs, embed_dims)
         pos_feat = self.position_encoder(inverse_sigmoid(reference_points_3d)).permute(1, 0, 2)
 
