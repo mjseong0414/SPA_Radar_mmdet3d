@@ -312,4 +312,4 @@ evaluation = dict(interval=24, pipeline=test_pipeline)
 checkpoint_config = dict(interval=4)
 
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-load_from='/home/spalab/jskim/SPA_Radar_mmdet3d/work_dirs/fcos3d_res50_fusion_256.pth'
+load_from='/home/spalab/jskim/SPA_Radar_mmdet3d/work_dirs/fcos3d_res101_fusion_256.pth'
