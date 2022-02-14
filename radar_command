@@ -1,4 +1,4 @@
-MMdetection3d radar Code
+MMdetection3d radar Code!
 
 # Making nuscenes radar dataset code
 python tools/create_data.py nuscenes_radar --root-path /mnt/sda/minjae/nuscenes/ --out-dir data/nuscenes --extra-tag nuscenes --max-sweeps 6
