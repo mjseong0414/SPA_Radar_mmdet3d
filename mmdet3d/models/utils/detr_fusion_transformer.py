@@ -400,7 +400,7 @@ class Detr3DFusionCrossAtten(BaseModule):
         # (num_query, bs, embed_dims)
         pos_feat = self.position_encoder(inverse_sigmoid(reference_points_3d)).permute(1, 0, 2)
         
-        fusion_output = torch.cat((output,pts_output,inp_residual,pos_feat),2).to('cuda')*fusion_attention_weights.sigmoid()
+        fusion_output = torch.cat((output,pts_output),2).to('cuda')*fusion_attention_weights.sigmoid()
         fusion_output = self.fusion_proj(fusion_output)
         # return self.dropout(fusion_output)
         return self.dropout(fusion_output) + inp_residual + pos_feat
