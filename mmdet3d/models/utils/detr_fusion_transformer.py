@@ -282,9 +282,11 @@ class Detr3DFusionCrossAtten(BaseModule):
         self.img_attention_weights = nn.Linear(embed_dims,
                                            num_cams*num_levels*num_points)
         self.pts_attention_weights = nn.Linear(embed_dims,1*3*num_points)
+        self.fusion_attention_weights =nn.Linear(embed_dims,2*embed_dims)
 
         self.output_proj = nn.Linear(embed_dims, embed_dims)
         self.pts_output_proj = nn.Linear(embed_dims, embed_dims)
+        self.fusion_proj = nn.Linear(2*embed_dims, embed_dims)
       
         self.position_encoder = nn.Sequential(
             nn.Linear(3, self.embed_dims), 
@@ -302,8 +304,11 @@ class Detr3DFusionCrossAtten(BaseModule):
         """Default initialization for Parameters of Module."""
         constant_init(self.img_attention_weights, val=0., bias=0.)
         constant_init(self.pts_attention_weights, val=0., bias=0.)
+        constant_init(self.fusion_attention_weights, val=0., bias=0.)
         xavier_init(self.output_proj, distribution='uniform', bias=0.)
         xavier_init(self.pts_output_proj, distribution='uniform', bias=0.)
+        xavier_init(self.fusion_proj, distribution='uniform', bias=0.)
+
 
     def forward(self,
                 query,
@@ -368,6 +373,8 @@ class Detr3DFusionCrossAtten(BaseModule):
             bs, 1, num_query, self.num_cams, self.num_points, self.num_levels)
         pts_attention_weights = self.pts_attention_weights(query).view(
             bs, 1, num_query, 1, self.num_points, 3)
+        fusion_attention_weights = self.fusion_attention_weights(query).view(
+            num_query,self.num_points,2*self.embed_dims)
         mlvl_feats , pts_feats = value
         # breakpoint()
         reference_points_3d, output, mask = img_feature_sampling(
@@ -392,8 +399,12 @@ class Detr3DFusionCrossAtten(BaseModule):
         pts_output = self.pts_output_proj(pts_output)
         # (num_query, bs, embed_dims)
         pos_feat = self.position_encoder(inverse_sigmoid(reference_points_3d)).permute(1, 0, 2)
-
-        return self.dropout(output) + self.dropout(pts_output) + inp_residual + pos_feat
+        
+        fusion_output = torch.cat((output,pts_output),2).to('cuda')*fusion_attention_weights.sigmoid()
+        fusion_output = self.fusion_proj(fusion_output)
+        # return self.dropout(fusion_output)
+        return self.dropout(fusion_output) + inp_residual + pos_feat
+        # return self.dropout(output) + self.dropout(pts_output) + inp_residual + pos_feat
 
 ###############################################################################
 def img_feature_sampling(mlvl_feats, reference_points, pc_range, img_metas):
