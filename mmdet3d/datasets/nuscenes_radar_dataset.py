@@ -199,6 +199,7 @@ class NuScenesRadarDataset(Custom3DDataset):
         Returns:
             list[dict]: List of annotations sorted by timestamps.
         """
+        
         data = mmcv.load(ann_file)
         data_infos = list(sorted(data['infos'], key=lambda e: e['timestamp']))
         data_infos = data_infos[::self.load_interval]
@@ -423,7 +424,7 @@ class NuScenesRadarDataset(Custom3DDataset):
         from nuscenes.eval.detection.evaluate import NuScenesEval
         output_dir = osp.join(*osp.split(result_path)[:-1])
         # breakpoint()
-        nusc = NuScenes(version=self.version, dataroot='/mnt/sda/minjae/nuscenes/', verbose=False)
+        nusc = NuScenes(version=self.version, dataroot=data_root, verbose=False)
         eval_set_map = {
             'v1.0-mini': 'mini_val',
             'v1.0-trainval': 'val',

@@ -402,9 +402,9 @@ class Detr3DFusionCrossAtten(BaseModule):
         
         fusion_output = torch.cat((output,pts_output),2).to('cuda')*fusion_attention_weights.sigmoid()
         fusion_output = self.fusion_proj(fusion_output)
-        # return self.dropout(fusion_output)
-        return self.dropout(fusion_output) + inp_residual + pos_feat
-        # return self.dropout(output) + self.dropout(pts_output) + inp_residual + pos_feat
+        # return self.dropout(fusion_output) ### v4
+        return self.dropout(fusion_output) + inp_residual + pos_feat ### v3, v5
+        # return self.dropout(output) + self.dropout(pts_output) + inp_residual + pos_feat ### v2
 
 ###############################################################################
 def img_feature_sampling(mlvl_feats, reference_points, pc_range, img_metas):
@@ -451,18 +451,20 @@ def img_feature_sampling(mlvl_feats, reference_points, pc_range, img_metas):
     return reference_points_3d, sampled_feats, mask
 
 def radar_feature_sampling(pts_feats, reference_points):
+    # breakpoint()
     B, num_query = reference_points.size()[:2]
-    reference_points = reference_points.clone()
-    reference_points = reference_points[...,0:2]
-    reference_points = reference_points.view(1,900,1,2).repeat(3,1,1,1)
+    reference_points_bev = reference_points.clone()
+    reference_points_bev = (reference_points_bev[...,0:2]-0.5)/0.5
+    reference_points_bev = reference_points_bev.view(1,900,1,2).repeat(3,1,1,1)
     sampled_feats = []
     for lvl,feat in enumerate(pts_feats):
         B, C, H, W = feat.size()
         C_3 = int(C/3)
         feat = feat.view(B*3, C_3, H, W)
-        sampled_feat = F.grid_sample(feat, reference_points)
+        sampled_feat = F.grid_sample(feat, reference_points_bev)
         sampled_feat = sampled_feat.view(B, 3, C_3, num_query, 1).permute(0, 2, 3, 1, 4)
         sampled_feats.append(sampled_feat)
+        # breakpoint()
     sampled_feats = torch.stack(sampled_feats, -1)
     sampled_feats = sampled_feats.view(B, C_3, num_query, 3,  1, len(pts_feats))
     return sampled_feats

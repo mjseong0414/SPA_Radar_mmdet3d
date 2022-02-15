@@ -69,6 +69,7 @@ class Detr3DFusion(MVXTwoStageDetector):
         """Extract features of points."""
         if not self.with_pts_bbox:
             return None
+        # breakpoint()
         voxels, num_points, coors = self.voxelize(pts)
         voxel_features = self.pts_voxel_encoder(voxels, num_points, coors)
         batch_size = coors[-1, 0] + 1

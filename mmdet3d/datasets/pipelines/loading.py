@@ -776,7 +776,6 @@ class LoadRadarPointsFromFile(object):
 
                 - points (:obj:`BasePoints`): Point clouds data.
         """
-        
         points = np.zeros((0, 6)) # x, y, z, RCS, vx_comp, vy_comp
         # 5개 레이더 센서 포인트를 하나로 묶어줌
         for pts_filename in results['radar_pts_filename']:
