@@ -466,6 +466,6 @@ def radar_feature_sampling(pts_feats, reference_points):
         sampled_feats.append(sampled_feat)
         # breakpoint()
     sampled_feats = torch.stack(sampled_feats, -1)
-    sampled_feats = sampled_feats.view(B, C_3, num_query, 3,  1, len(pts_feats))
+    sampled_feats = sampled_feats.view(B, C_3, num_query, 1,  1, 3)
     return sampled_feats
     
